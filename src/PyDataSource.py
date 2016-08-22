@@ -218,11 +218,16 @@ def _repr_value(value):
                 return 'list'
             else:
                 return str(value)
-        elif hasattr(value, 'mean'):
+        
+        elif isinstance(value, int):
+            return str(value)
+        
+        elif hasattr(value, 'mean') and value.size > 4:
             try:
                 return '<{:.4}>'.format(value.mean())
             except:
                 return str(value)
+        
         else:
             try:
                 return '{:10.5g}'.format(value)
@@ -255,9 +260,10 @@ def _get_typ_func_attr(typ_func, attr, nolist=False):
         nvals = info.get('func_shape')
         if isinstance(nvals, str):
             nvals = getattr(typ_func, nvals)()[0]
-        
+       
+        i0 = info.get('func0',0)
         try:
-            value = [value(i) for i in range(nvals)]
+            value = [value(i+i0) for i in range(nvals)]
         except:
             pass
 
@@ -354,7 +360,8 @@ def psmon_publish(evt, quiet=True):
                             psmon_fnc = Image(
                                         event_info,
                                         psmon_args['title'],
-                                        np.array(image, dtype='f').transpose(), 
+                                        np.array(image, dtype='f'), 
+                                        #np.array(image, dtype='f').transpose(), 
                                         **psmon_args['kwargs'])
                     
                     elif psplot_func is 'XYPlot':
@@ -377,7 +384,8 @@ def psmon_publish(evt, quiet=True):
                     if psmon_fnc:
                         #print 'publish', name, event_info, psmon_args
                         #print psmon_fnc
-                        publish.send(name,psmon_fnc)
+                        pub_info = publish.send(name,psmon_fnc)
+                        psmon_args['psmon_fnc'] = psmon_fnc
 
 
 class ScanData(object):
@@ -397,8 +405,12 @@ class ScanData(object):
         ievent_end = []
         ievent_start = []
         for istep, events in enumerate(ds.steps):
-            evt = events.next()
-            ttup = (evt.EventId.sec, evt.EventId.nsec, evt.EventId.fiducials)
+            okevt = False
+            while not okevt:
+                evt = events.next()
+                ttup = (evt.EventId.sec, evt.EventId.nsec, evt.EventId.fiducials)
+                okevt = ttup in ds._idx_times_tuple
+
             ievent = ds._idx_times_tuple.index(ttup)
             ievent_start.append(ievent)
             if istep > 0:
@@ -433,7 +445,7 @@ class ScanData(object):
             if 'pvControls_name' in self._attrs:
                 self.pvControls = self._scanData['pvControls_name'][0]
             else:
-                self.pvControls = None
+                self.pvControls = []
             
             if 'pvMonitors_name' in self._attrs:
                 self.pvMonitors = self._scanData['pvMonitors_name'][0]
@@ -556,17 +568,17 @@ class DataSource(object):
     _default_modules = {
             'path': '',
             'devName': {
-#                'Evr': 'evr', 
-#                'Imp': 'imp',
-##                'Acqiris': 'acqiris',
-#                'Epix': 'epix100',
-#                'Cspad': 'cspad',
-#                'Cspad2x2': 'cspad2x2',
-#                'Tm6740': 'pim',
-#                'Opal1000': 'camera',
-#                'Opal2000': 'camera',
-#                'Opal4000': 'camera',
-#                'Opal8000': 'camera',
+##                'Evr': 'evr', 
+##                'Imp': 'imp',
+#                'Acqiris': 'acqiris',
+##                'Epix': 'epix100',
+##                'Cspad': 'cspad',
+##                'Cspad2x2': 'cspad2x2',
+##                'Tm6740': 'pim',
+##                'Opal1000': 'camera',
+##                'Opal2000': 'camera',
+##                'Opal4000': 'camera',
+##                'Opal8000': 'camera',
                 },
              'srcname': {
 #                'XrayTransportDiagnostic.0:Opal1000.0': 'xtcav_det',
@@ -577,7 +589,12 @@ class DataSource(object):
 
     def __init__(self, data_source=None, **kwargs):
         self._device_sets = {}
-        self._default_modules.update({'path': os.path.dirname(__file__)+'/detectors'})
+        path = os.path.dirname(__file__)
+        if not path:
+            path = '.'
+
+        self._default_modules.update({'path': path})
+        #self._default_modules.update({'path': os.path.join(path,'detectors')})
         self.load_run(data_source=data_source, **kwargs)
         if self.data_source.smd:
             self._load_smd_config()
@@ -714,6 +731,7 @@ class DataSource(object):
     def add_detector(self, srcstr=None, alias=None, module=None, path=None, 
                      #pvs=None, desc=None, parameters={}, 
                      desc=None,
+                     quiet=False,
                      **kwargs):
         initialized = False
         if not alias:
@@ -730,10 +748,13 @@ class DataSource(object):
         if alias not in self._device_sets:
             self._device_sets[alias] = {
                     'alias': alias, 
+                    'module': {},
+                    'opts': {}, 
                     'parameter': {}, 
                     'property': {},
                     'psplot': {},
                     'roi': {},
+                    'count': {},
                     'peak': {},
                     'projection': {},
                     'xarray': {},
@@ -756,12 +777,15 @@ class DataSource(object):
                 module = module.split('.')[0]
 
             # First check for device configuration
-            if 'module' in det_dict:
-                module_name = det_dict['module']['name']
-                if 'path' in det_dict['module']:
-                    module_path = det_dict['module']['path']
-                else:
-                    module_path = ''
+            
+            if det_dict.get('module'):
+                module_name = det_dict['module'].get('name',None)
+                module_path = det_dict['module'].get('path','')
+#                module_name = det_dict['module'].get('name',None)
+#                if 'path' in det_dict['module']:
+#                    module_path = det_dict['module'].get('path','')
+#                else:
+#                    module_path = ''
             else:
                 module_name = None 
                 module_path = ''
@@ -769,9 +793,10 @@ class DataSource(object):
             # Then use module and path keywords if applicable
             if module:
                 if module_name:
-                    print 'Changing {alias} detector module from \
-                          {module_name} to {module}'.format(
-                           alias=alias,module=module,module_name=module_name)
+                    if not quiet:
+                        print 'Changing {alias} detector module from \
+                              {module_name} to {module}'.format(
+                               alias=alias,module=module,module_name=module_name)
                 else:
                     det_dict['module'] = {}
                 
@@ -797,8 +822,9 @@ class DataSource(object):
                     module_path = path
         
                 if module_path:
-                    print 'Using the path {module_path} for {module_name}'.format( \
-                           module_path=module_path, module_name=module_name)
+                    if not quiet:
+                        print 'Using the path {module_path} for {module_name}'.format( \
+                               module_path=module_path, module_name=module_name)
                 else:
                     module_path = self._default_modules['path']
                     
@@ -814,14 +840,18 @@ class DataSource(object):
                 det_dict['module']['dict'] = [attr for attr in new_class.__dict__ \
                                               if not attr.startswith('_')]
 
-                print 'Loading {alias} as {new_class} from {module_path}'.format(
-                       alias=alias,new_class=new_class,module_path=module_path)
+                if not quiet:
+                    print 'Loading {alias} as {new_class} from {module_path}'.format(
+                           alias=alias,new_class=new_class,module_path=module_path)
+                
                 nomodule = False
                 self._detectors[alias] = new_class(self, alias, **kwargs)
                 initialized = True
 
             if is_default_class:
-                print 'Loading {alias} as standard Detector class'.format(alias=alias)
+                if not quiet:
+                    print 'Loading {alias} as standard Detector class'.format(alias=alias)
+                
                 self._detectors[alias] = Detector(self, alias)
                 initialized = True
 
@@ -834,7 +864,7 @@ class DataSource(object):
     def _add_dets(self, **kwargs):
         for alias, srcstr in kwargs.items():
             try:
-                self.add_detector(srcstr, alias=alias)
+                self.add_detector(srcstr, alias=alias, quiet=True)
             except Exception as err:
                 print 'Cannot add {:}:  {:}'.format(alias, srcstr) 
                 traceback.print_exc()
@@ -1026,6 +1056,8 @@ class RunEvents(object):
                 evt = self._ds._ds_run.event(self.times[self._ds._ievent]) 
                 self._ds._evt_keys, self._ds._evt_modules = get_keys(evt)
                 self._ds._current_evt = evt
+                self._ds._current_data = {}
+                self._ds._current_evtData = {}
 
             return EvtDetectors(self._ds, **kwargs)
 
@@ -1141,6 +1173,8 @@ class StepEvents(object):
                     
                 self._ds._evt_keys, self._ds._evt_modules = get_keys(evt)
                 self._ds._current_evt = evt
+                self._ds._current_data = {}
+                self._ds._current_evtData = {}
             
             except:
                 print evt_time, 'is not a valid event time'
@@ -1156,6 +1190,8 @@ class StepEvents(object):
                 evt = self._ds._ds_step.events().next()
                 self._ds._evt_keys, self._ds._evt_modules = get_keys(evt)
                 self._ds._current_evt = evt 
+                self._ds._current_data = {}
+                self._ds._current_evtData = {}
             except:
                 raise StopIteration()
 
@@ -1184,6 +1220,9 @@ class Events(object):
             evt = self._ds._ds.events().next()
             self._ds._evt_keys, self._ds._evt_modules = get_keys(evt)
             self._ds._current_evt = evt 
+            self._ds._current_data = {}
+            self._ds._current_evtData = {}
+
         except:
             raise StopIteration()
 
@@ -1290,7 +1329,10 @@ class PsanaTypeData(object):
 
         if type_name in psana_doc_info[module]:
             self._info = psana_doc_info[module][type_name].copy()
+            self._attrs_new = [key for key in psana_attrs[module][type_name]] 
             self._attrs = [key for key in self._info.keys() if not key[0].isupper()]
+            #print module,        
+ 
         else:
             self._attrs = [attr for attr in dir(typ_func) if not attr.startswith('_')]
             self._info = {}
@@ -1298,6 +1340,10 @@ class PsanaTypeData(object):
         self._attr_info = {}
         for attr in self._attrs:
             self._attr_info[attr] = _get_typ_func_attr(typ_func, attr, nolist=nolist)
+        
+#        self._attr_info_new = {}
+#        for attr in self._attrs_new:
+#            self._attr_info_new[attr] = _get_typ_func_attr(typ_func, attr, nolist=nolist)
 
     @property
     def _values(self):
@@ -1774,10 +1820,10 @@ class EvtDetectors(object):
     _init_attrs = ['get', 'keys'] #  'run' depreciated
     _event_attrs = ['EventId', 'Evr', 'L3T']
 
-    def __init__(self, ds, init=True): 
+    def __init__(self, ds, publish=True, init=True): 
         self._ds = ds
         if init:
-            self._init()
+            self._init(publish=publish)
 
     def _init(self, publish=True):
         if publish:
@@ -1940,9 +1986,11 @@ class ConfigSources(object):
             item = self._sources.get(srcstr,{})
 
             polarity = item.get('evr_polarity', '')
-            if polarity == 1:
+            # Epics convention used -- has it always been this?
+            # I was previously using the opposite convetion here
+            if polarity == 0:
                 polarity = 'Pos'
-            elif polarity == 0:
+            elif polarity == 1:
                 polarity = 'Neg'
 
             delay = item.get('evr_delay', '')
@@ -2043,7 +2091,7 @@ class EvrData(PsanaTypeData):
         PsanaTypeData.__init__(self, typ_func)
         self.eventCodes = self.fifoEvents.eventCode
 
-    def present(self, eventCode):
+    def _present(self, eventCode):
         """Return True if the eventCode is present.
         """
         try:
@@ -2054,6 +2102,42 @@ class EvrData(PsanaTypeData):
                 return False
         except:
             return False
+
+    def present(self, *args):
+        """Check if the event has specified event code.
+           Multiple event codes can be tested.
+           e.g., 
+              assume: 
+                self.eventCodes = [41, 140]
+              then:
+                self.present(41, 140) = True
+                self.present(42, 140) = Flase
+            
+            To check if an event code is not present use a negative number:
+            e.g., 
+                self.present(-41) = False
+                self.present(-41, 140) = False
+                self.present(-42) = True
+                self.present(-42, 140) = True
+                self.present(-42, 41, 140) = True
+        """
+        if args[0] is None:
+            return True
+
+        if len(args) == 1:
+            if isinstance(args[0], list):
+                eventCodes = {arg for arg in args[0]}
+            else:
+                eventCodes = args
+        else:
+            eventCodes = args
+
+        for eventCode in eventCodes:
+            if (eventCode > 0 and not self._present(eventCode)) \
+                    or (eventCode < 0 and self._present(abs(eventCode))):
+                return False
+
+        return True
 
     def __str__(self):
         try:
@@ -2165,6 +2249,7 @@ class Detector(object):
     _pydet = None
     _pydet_name = None
     _init = False
+    _xarray_init = False
 
     def __init__(self, ds, alias, verbose=False, **kwargs):
         """Initialize a psana Detector class for a given detector alias.
@@ -2232,6 +2317,7 @@ class Detector(object):
         """Update default xarray information
         """
         # attrs -- not valid yet for bld but should fix this to avoid try/except here
+        self._xarray_init = True
         try:
             attrs = {attr: item for attr, item in self.configData._all_values.items() \
                 if np.product(np.shape(item)) <= 17}
@@ -2361,6 +2447,27 @@ class Detector(object):
 
         self._xarray_info['coords'].update(**coords_dict)
 
+    def _add_xarray_evtData(self, attrs=[]):
+        """Add evtData xarray information.
+        """
+        dims_dict = {}
+        for attr in attrs:
+            if attr in self.evtData._all_values:
+                val = self.evtData._all_values.get(attr)
+                npval = np.array(val)
+                if npval.size > 1:
+                    dims_dict[attr] = (['d{:}_{:}'.format(i,a) for i,a in enumerate(npval.shape)], npval.shape)
+                else:
+                    info = self.evtData._attr_info.get(attr)
+                    if info:
+                        xattrs = {a: b for a, b in info.items() if a in ['doc','unit']}
+                    else:
+                        xattrs = {}
+                    dims_dict[attr] = ([], (), xattrs)
+
+        self._xarray_info['dims'].update(**dims_dict)
+
+
     @property
     def _attrs(self):
         """Attributes of psana.Detector functions if relevant, and otherwise
@@ -2409,35 +2516,46 @@ class Detector(object):
 
     def _show_user_info(self, **kwargs):
         message = Message(quiet=True, **kwargs)
-        if self._det_config.get('module') and self._det_config['module'].get('dict'):
-            message('-'*80)
-            message('Class Properties:')
-            message('-'*18)
-            for attr in self._det_config['module'].get('dict', []):
-                val = getattr(self, attr)
-                try:
-                    val = val()
-                except:
-                    pass
-                
-                strval = _repr_value(val)
-                fdict = {'attr': attr, 'str': strval, 'unit': '', 'doc': ''}
-                message('{attr:18s} {str:>12} {unit:7} {doc:}'.format(**fdict))
-
-#        if self._det_config['projection']:
+#        if self._det_config.get('module') and self._det_config['module'].get('dict'):
 #            message('-'*80)
-#            message('User Defined Projections:')
+#            message('Class Properties:')
 #            message('-'*18)
-#            for attr, item in self._det_config['projection'].items():
+#            for attr in self._det_config['module'].get('dict', []):
 #                val = getattr(self, attr)
 #                try:
 #                    val = val()
 #                except:
 #                    pass
-# 
+#                
 #                strval = _repr_value(val)
 #                fdict = {'attr': attr, 'str': strval, 'unit': '', 'doc': ''}
 #                message('{attr:18s} {str:>12} {unit:7} {doc:}'.format(**fdict))
+
+        if self._det_config['projection']:
+            message('-'*80)
+            message('User Defined Projections:')
+            message('-'*18)
+            for attr, item in self._det_config['projection'].items():
+                val = getattr(self, attr)
+                try:
+                    val = val()
+                except:
+                    pass
+ 
+                strval = _repr_value(val)
+                fdict = {'attr': attr, 'str': strval, 'unit': '', 'doc': ''}
+                message('{attr:18s} {str:>12} {unit:7} {doc:}'.format(**fdict))
+ 
+        if self._det_config['count']:
+            message('-'*80)
+            message('Detector Counts:')
+            message('-'*18)
+            for attr, item in self._det_config['count'].items():
+                fdict = item.copy()
+                val = getattr(self, attr)
+                strval = _repr_value(val)
+                fdict.update({'attr': attr, 'str': strval})
+                message('{attr:18s} {str:>12} {unit:7} {doc:}'.format(**fdict))
  
         if self._det_config['parameter']:
             message('-'*80)
@@ -2455,7 +2573,14 @@ class Detector(object):
             items = sorted(self._det_config['peak'].items(), key=operator.itemgetter(0))
             for attr, item in items:
                 val = getattr(self, attr)
-                strval = '{:10.5g}'.format(val)
+                if hasattr(val, 'mean') and val.size > 1:
+                    strval = '<{:}>'.format(val.mean())
+                else:
+                    try:
+                        strval = '{:10.5g}'.format(val)
+                    except:
+                        strval = str(val)
+
                 doc = item.get('doc','')
                 unit = item.get('unit','')
                 fdict = {'attr': attr, 'str': strval, 'unit': unit, 'doc': doc}
@@ -2466,7 +2591,8 @@ class Detector(object):
             message('User Defined Properties:')
             message('-'*18)
             for attr, func_name in self._det_config['property'].items():
-                val = getattr(self, func_name)
+                #val = getattr(self, func_name)
+                val = self._get_property(attr)
                 strval = _repr_value(val)
                 fdict = {'attr': attr, 'str': strval, 'unit': '', 'doc': ''}
                 message('{attr:18s} {str:>12} {unit:7} {doc:}'.format(**fdict))
@@ -2531,8 +2657,11 @@ class Detector(object):
     def evtData(self):
         """Tab accessible raw data from psana event keys.
         """
-        return PsanaSrcData(self._ds._current_evt, self._srcstr, 
-                            key_info=self._ds._evt_keys)
+        if self._alias not in self._ds._current_evtData:
+            self._ds._current_evtData.update({self._alias: 
+                PsanaSrcData(self._ds._current_evt, self._srcstr, key_info=self._ds._evt_keys)})
+
+        return self._ds._current_evtData.get(self._alias)
 
     @property
     def epicsData(self):
@@ -2540,10 +2669,18 @@ class Detector(object):
 
     @property
     def detector(self):
-        """Raw, calib and image data using psana.Detector class
+        """Raw, calib and image data using psana.Detector class.
+           Improved speed with data cashing when accessing the same object multiple times for
+           the same event (e.g., multiple roi or other access for same data).
         """
         if self._pydet:
-            return self._det_class(self._pydet, self._ds._current_evt)
+            if self._alias not in self._ds._current_data:
+                #opts = self._det_config.get('opts', {})
+                #self._ds._current_data.update({self._alias: self._det_class(self._pydet, self._ds._current_evt, opts=opts)})
+                self._ds._current_data.update({self._alias: self._det_class(self._pydet, self._ds._current_evt)})
+             
+            return self._ds._current_data.get(self._alias)
+
         else:
             return None
 
@@ -2556,20 +2693,71 @@ class Detector(object):
         else:
             return None
 
+    def set_cmpars(self, cmpars):
+        """Set common mode.
+        """
+        if 'calib' not in self._det_config['opts']:
+            self._det_config['opts']['calib'] = {}
+        
+        # reset current data
+        self._ds._current_data = {}
+        # save opts for calib object
+        self._det_config['opts']['calib'].update({'cmpars': cmpars})
+        self._pydet.calib(self._ds._current_evt, cmpars=cmpars)
+
     def _get_roi(self, attr):
         """Get roi from roi_name as defined by AddOn.
         """
         if attr in self._det_config['roi']:
             item = self._det_config['roi'][attr]
-            img = getattr(self, item['attr'])
+            #img = getattr(self, item['attr'])
+            #img = self._getattr(item['attr'])
+            img = getattr_complete(self, item['attr'])
             if img is not None:
                 roi = item['roi']
-                if len(roi) == 3:
-                    return img[roi[0],roi[1][0]:roi[1][1],roi[2][0]:roi[2][1]]
-                else:
-                    return img[roi[0][0]:roi[0][1],roi[1][0]:roi[1][1]]
+                if len(img.shape) == 1:
+                    return img[roi[0]:roi[1]]
+
+                sensor = item.get('sensor')
+                if sensor is not None:
+                    img = img[sensor]
+                    
+                return img[roi[0][0]:roi[0][1],roi[1][0]:roi[1][1]]
             else:
                 return None
+        else:
+            return None
+
+    @property
+    def psplots(self):
+        """To kill a plot that has been created with self.add.psplot, del self.psplots[name]
+           and close the plot window.  
+           
+           If you only close the plot window it will automatically reopen on the next event.
+           If the plot is not updating as expected, simply close the window and it will refresh
+           on the next event.
+
+           e.g., 
+                evt.DscCsPad.add.projection('calib','r',publish=True)
+                del evt.DscCsPad.psplots['DscCsPad_calib_r']
+                
+                evt.DscCsPad.add.psplot('image')                
+                del evt.DscCsPad.psplots['DscCsPad_image']
+
+        """
+        return self._det_config['psplot']
+
+    def _get_count(self, attr):
+        """Get counts from count_name as defined by AddOn.
+        """
+        if attr in self._det_config['count']:
+            item = self._det_config['count'][attr]
+            #img = getattr(self, item['attr'])
+            #img = self._getattr(item['attr'])
+            img = getattr_complete(self, item['attr'])
+            gain = item.get('gain', 1.)
+            return img.sum()*gain
+
         else:
             return None
 
@@ -2579,9 +2767,9 @@ class Detector(object):
         if attr in self._det_config['peak']:
             item = self._det_config['peak'][attr]
             wf = getattr(self, item['attr'])
-            channel = item.get('channel')
-            if channel is not None:
-                wf = wf[channel]
+            ichannel = item.get('ichannel')
+            if ichannel is not None:
+                wf = wf[ichannel]
 
             background = item.get('background')
             if background:
@@ -2591,24 +2779,29 @@ class Detector(object):
             if scale:
                 wf *= scale
 
+            method = item.get('method')
+            if method == 'waveform':
+                return wf
+            
             wf = list(wf)
             maxval = max(wf)
-            method = item.get('method')
+            if method == 'max':
+                return maxval
+            
+            if max > item.get('threshold'):
+                idx = wf.index(maxval)
+            else:
+                idx = 0        
+    
             if method == 'index':
-                idx = wf.index(maxval) 
+                return idx
+
+            if method == 'time':
                 xaxis = item.get('xaxis')
                 if xaxis is not None:
                     return xaxis[idx]
-                else:
-                    return idx
 
-            elif method == 'max':
-                return maxval
-            else:
-                return None
-
-        else:
-            return None
+        return None
  
     def _get_projection(self, attr):
         """Get projection as defined by AddOn.
@@ -2617,7 +2810,9 @@ class Detector(object):
         if item is None:
             return None
 
-        img = getattr(self, item['attr'])
+        #img = getattr(self, item['attr'])
+        img = getattr_complete(self, item['attr'])
+        #img = self._getattr(item['attr'])
         if img is None:
             return None
 
@@ -2635,10 +2830,15 @@ class Detector(object):
             
         else:
             # perform method on oposite axis where psana convention is images have coordinates (x, y)
-            iaxis = {'x': 1, 'y': 0}.get(axis,0)
+            iaxis = {'x': 0, 'y': 1}.get(axis,0)
             method = item.get('method', 'sum')
             return getattr(img, method)(axis=iaxis)
 
+    def _get_property(self, attr):
+        func_name = self._det_config['property'].get(attr)
+        if hasattr(func_name,'__call__'):
+            func_name = func_name(self)
+        return func_name
 
     def __str__(self):
         return '{:} {:}'.format(self._alias, str(self._ds.events.current))
@@ -2654,10 +2854,10 @@ class Detector(object):
             return self._det_config['parameter'].get(attr)
 
         if attr in self._det_config['property']:
-            func_name = self._det_config['property'].get(attr)
-            if hasattr(func_name,'__call__'):
-                func_name = func_name(self)
-            return func_name
+            return self._get_property(attr)
+            
+        if attr in self._det_config['count']:
+            return self._get_count(attr)
 
         if attr in self._det_config['roi']:
             return self._get_roi(attr)
@@ -2676,6 +2876,7 @@ class Detector(object):
                          self._det_config['parameter'].keys() +
                          self._det_config['property'].keys() +
                          self._det_config['roi'].keys() + 
+                         self._det_config['count'].keys() + 
                          self._det_config['peak'].keys() + 
                          self._det_config['projection'].keys() + 
                          self._ds.events.current._event_attrs +
@@ -2874,7 +3075,7 @@ class AddOn(object):
         else:
             projaxis = self._det_config['xarray']['coords'].get(axis_name) 
             if projaxis is None:
-                iaxis = {'x': 0, 'y': 1}.get(axis)
+                iaxis = {'x': 1, 'y': 0}.get(axis)
                 projaxis = np.arange(img.shape[iaxis])    
                 self._det_config['xarray']['coords'].update({axis_name: projaxis})
         
@@ -2896,16 +3097,26 @@ class AddOn(object):
         """
         return getattr_complete(self._det,attr)
 
-    def roi(self, attr='image', roi=None, name=None, xaxis=None, yaxis=None, 
-                doc=None, publish=False, projection=None, **kwargs):       
+    def roi(self, attr=None, sensor=None, roi=None, name=None, xaxis=None, yaxis=None, 
+                doc='', unit='ADU', publish=False, projection=None, **kwargs):       
         """Make roi for given attribute, by default this is given the name img.
+           For 1 dim objects, roi is a tuple (xstart, xend)
            For 2 dim objects, roi is a tuple ((ystart, yend), (xstart, xend))
-           For 3 dim objects (e.g., cspad raw, calib), roi is a tuple where
-           the first element provides the detector component.
+           For 3 dim objects (e.g., cspad raw, calib), use sensor keyword to 
+              sepcify the sensor and roi as ((ystart, yend), (xstart, xend)).
         """
+        if not attr:
+            if sensor is not None:
+                attr = 'calib'
+            else:
+                attr = 'image'
+
         if not roi:
             try:
                 img = self._getattr(attr)
+                if sensor is not None:
+                    img = img[sensor]
+
                 plotMax = np.percentile(img, 99.5)
                 plotMin = np.percentile(img, 5)
                 print 'using the 5/99.5% as plot min/max: (',plotMin,',',plotMax,')'
@@ -2922,13 +3133,10 @@ class AddOn(object):
                 print 'Cannot get roi'
                 return None
 
-        if len(roi) == 3:
-            xroi = roi[2]
-            yroi = roi[1]
-        else:
-            xroi = roi[1]
-            yroi = roi[0]
-
+        #if len(roi) == 3:
+        #    xroi = roi[2]
+        #    yroi = roi[1]
+        #else:
         if not name:
             nroi = len(self._det_config['roi'])
             if nroi == 0:
@@ -2936,23 +3144,64 @@ class AddOn(object):
             else:
                 name = 'roi'+str(nroi+1)
 
-        xaxis_name = 'x'+name
-        if not xaxis or len(xaxis) != xroi[1]-xroi[0]:
-            xaxis = np.arange(xroi[0],xroi[1])    
-        
-        yaxis_name = 'y'+name
-        if not yaxis or len(yaxis) != yroi[1]-yroi[0]:
-            yaxis = np.arange(yroi[0],yroi[1])    
-         
-        self._det_config['xarray']['coords'].update({xaxis_name: xaxis, 
-                                            yaxis_name: yaxis})
-        self._det_config['xarray']['dims'].update(
-                {name: ([yaxis_name, xaxis_name], (yaxis.size, xaxis.size))})
+        img = self._getattr(attr)
+        if len(img.shape) == 1:
+            xroi = roi
+            xaxis_name = 'x'+name
+            if not xaxis or len(xaxis) != xroi[1]-xroi[0]:
+                xaxis = np.arange(xroi[0],xroi[1])    
+            
+            if doc == '':
+                doc = "{:} ROI of {:} data".format(name, attr)
 
-        self._det_config['roi'].update({name: {'attr': attr, 
-                                               'roi': roi,
-                                               'xaxis': xaxis,
-                                               'yaxis': yaxis}})
+            xattrs = {}
+            xattrs.update({'doc': doc, 'unit': unit, 'roi': roi})
+            if sensor is not None:
+                xattrs.update({'sensor': sensor})
+            
+            self._det_config['xarray']['coords'].update({xaxis_name: xaxis})
+            self._det_config['xarray']['dims'].update(
+                    {name: ([xaxis_name], (xaxis.size), xattrs)})
+
+            self._det_config['roi'].update({name: {'attr': attr, 
+                                                   'roi': roi,
+                                                   'sensor': sensor,
+                                                   'xaxis': xaxis,
+                                                   'doc': doc,
+                                                   'unit': unit}})
+ 
+        else:
+            xroi = roi[1]
+            yroi = roi[0]
+
+            xaxis_name = 'x'+name
+            if not xaxis or len(xaxis) != xroi[1]-xroi[0]:
+                xaxis = np.arange(xroi[0],xroi[1])    
+            
+            yaxis_name = 'y'+name
+            if not yaxis or len(yaxis) != yroi[1]-yroi[0]:
+                yaxis = np.arange(yroi[0],yroi[1])    
+            
+            if doc == '':
+                doc = "{:} ROI of {:} data".format(name, attr)
+
+            xattrs = {}
+            xattrs.update({'doc': doc, 'unit': unit, 'roi': roi})
+            if sensor is not None:
+                xattrs.update({'sensor': sensor})
+            
+            self._det_config['xarray']['coords'].update({xaxis_name: xaxis, 
+                                                yaxis_name: yaxis})
+            self._det_config['xarray']['dims'].update(
+                    {name: ([yaxis_name, xaxis_name], (yaxis.size, xaxis.size), xattrs)})
+
+            self._det_config['roi'].update({name: {'attr': attr, 
+                                                   'roi': roi,
+                                                   'sensor': sensor,
+                                                   'xaxis': xaxis,
+                                                   'yaxis': yaxis, 
+                                                   'doc': doc,
+                                                   'unit': unit}})
 
         if projection:
             if projection in [True, 'x']:
@@ -2963,35 +3212,147 @@ class AddOn(object):
         elif publish:
             self.psplot(name)
 
-    def peak(self, attr, channel=None, name=None,
+        return name
+
+    def count(self, attr=None, gain=None, unit=None, doc=None, 
+            roi=None, name=None, **kwargs):
+        """Count (i.e., sum) of detector within optional roi.
+            gain: optional converion from ADU to for example X-rays.
+        """
+        if gain:
+            if not unit:
+                unit = 'ADUx{:}'.format(gain)
+
+        else:
+            gain = 1
+            if not unit:
+                unit = 'ADU'
+
+        if roi:
+            if name:
+                roi_name = 'roi_'+name
+            else:
+                roi_name = None
+
+            roi_name = self.roi(attr, roi=roi, unit=unit, doc=doc, name=roi_name, **kwargs)
+            xattrs = self._det_config['xarray']['dims'][roi_name][2]
+            if not doc:
+                doc = 'Sum of {:} within roi={:}'.format(attr, roi)
+       
+        else:
+            roi_name = attr
+            xattrs = {}
+            if not doc:
+                doc = 'Sum of {:}'.format(attr)
+
+
+        if not name:
+            ncount = len(self._det_config['count'])
+            if ncount == 0:
+                name = roi_name+'_count'
+            
+            else:
+                name = roi_name+'_count'+str(ncount+1)
+
+
+        self._det_config['count'].update({name: {'attr': roi_name, 
+                                                 'gain': gain, 
+                                                 'unit': unit,
+                                                 'doc': doc}})
+
+        xattrs.update({'doc': doc, 'unit': unit})
+        self._det_config['xarray']['dims'].update(
+                {name: ([], (), xattrs)})
+
+    def peak(self, attr=None, ichannel=None, name=None,
             xaxis=None, roi=None, scale=1, baseline=None,
-            methods={'index': 'index', 'max': 'max'},
+            methods=None,
+            threshold=None, 
             docs={}, units={}):
         """simple 1D peak locator.
-           mdethod: index = index at max channel.
+           method: index = index at max channel.
                     max = maximum value.
+
+           acqiris waveform channels start with 1
+           by default threshold is 1.5% of full range for Acqiris
         """
+        if not attr:
+            if self._det._pydet_name == 'WFDetector':
+                if self._det.__class__.__name__ == 'Detector':
+                    self._det.add.module('acqiris')
+
+                attr = 'waveform'
+                if ichannel is None and not name:
+                    for i in range(self._det.waveform.shape[0]):
+                        print 'adding ichannel', i
+                        self.peak(ichannel=i, xaxis=xaxis,roi=roi, scale=scale, 
+                                  theshold=threshold, baseline=baseline, methods=None,
+                                  docs=docs,units=units)
+                    
+                    return
+
+        if not methods:
+            methods = {'index': 'index', 'max': 'max'}
+            if attr == 'waveform':
+                methods.pop('index')
+                methods.update({'time': 'time', 'waveform': 'waveform'})
+
+        units = {'time': 's', 'index': 'channel', 'max': 'V', 'waveform': 'V'}
+
         if not name:
-            name = attr
-            if channel is not None:
-                name += '_ch{:}'.format(channel)
+            if attr == 'waveform':
+                name = 'peak'
+            else:
+                name = attr+'_peak'
+            
+            if ichannel is not None:
+                name += '_ch{:}'.format(ichannel+1)
+
+        if not xaxis and attr == 'waveform' and ichannel is not None:
+            xaxis = self._det.wftime[ichannel]
+        
+        if not threshold:
+            if self._det._pydet.dettype == 16:
+                threshold = self._det.configData.vert.fullScale[ichannel]*0.015
+            else:
+                threshold = 0.
 
         for mname, method in methods.items():
+            # make entry for each peak method
+            pname = '_'.join([name, mname])
             doc = docs.get(mname, '')
             if not doc:
-                doc = '{:} {:} {:} of peak'.format(self._alias, name, method)
-            self._det_config['peak'].update({'_'.join([name, mname]):   
+                doc = '{:} {:} {:}'.format(self._alias, name, method)
+                if method not in ['waveform']:
+                    doc+=' of peak'
+
+            unit = units.get(mname, '')
+
+            self._det_config['peak'].update({pname:   
                     {'attr': attr,
-                     'channel': channel,
+                     'ichannel': ichannel,
                      'roi': roi,
                      'baseline': baseline,
+                     'threshold': threshold, 
                      'xaxis': xaxis,
                      'scale': scale,
                      'doc': doc,
-                     'unit': units.get(mname, ''),
+                     'unit': unit,
                      'method': method,
                      }})
-        
+
+            if method in ['waveform']:
+                axis_name = '_'.join([name,'t'])
+                projaxis = self._det.wftime[ichannel]
+                self._det_config['xarray']['coords'].update({axis_name: projaxis})
+                self._det_config['xarray']['dims'].update(
+                    {pname: ([axis_name], (projaxis.size))})
+                
+            else:
+                self._det_config['xarray']['dims'].update(
+                        {pname: ([], (), {'doc': doc, 'unit': unit})}
+                        )
+
 #    def mask(self, attr):
 #        img = self._getattr(attr)
 #        plotMax = np.percentile(img, 99.5)
@@ -3287,7 +3648,8 @@ class IpimbData(object):
     def __init__(self, det, evt):
         self._evt = evt
         self._det = det
-
+        self._data = {}
+    
     @property
     def instrument(self):
         """Instrument to which this detector belongs.
@@ -3330,7 +3692,11 @@ class IpimbData(object):
 
     def __getattr__(self, attr):
         if attr in self._attrs:
-            return getattr(self._det, attr)(self._evt)
+            if attr not in self._data:
+                self._data.update({attr: getattr(self._det, attr)(self._evt)})
+             
+            return self._data.get(attr)
+
 
     def __dir__(self):
         all_attrs =  set(self._attrs +
@@ -3425,6 +3791,7 @@ class WaveformData(object):
     def __init__(self, det, evt):
         self._evt = evt
         self._det = det
+        self._data = {}
 
     @property
     def instrument(self):
@@ -3467,8 +3834,13 @@ class WaveformData(object):
         return message
 
     def __getattr__(self, attr):
+        """Only access psana.Detector data once.
+        """
         if attr in self._attrs:
-            return getattr(self._det, attr)(self._evt)
+            if attr not in self._data:
+                self._data.update({attr: getattr(self._det, attr)(self._evt)})
+             
+            return self._data.get(attr)
 
     def __dir__(self):
         all_attrs =  set(self._attrs +
@@ -3577,9 +3949,12 @@ class ImageData(object):
                             'unit': 'ADU'},
             } 
 
+    #def __init__(self, det, evt, opts={}):
     def __init__(self, det, evt):
         self._evt = evt
         self._det = det
+        self._data = {}
+        #self._opts = opts
 
     @property
     def instrument(self):
@@ -3612,27 +3987,29 @@ class ImageData(object):
         if self.size > 0 or self.raw is not None:
             items = sorted(self._attr_info.items(), key = operator.itemgetter(0))
             for attr, item in items:
-                fdict = {'attr': attr, 'unit': '', 'doc': ''}
-                fdict.update(**item)
                 value = getattr(self, attr)
-                if isinstance(value, str):
-                    fdict['str'] = value
-                elif isinstance(value, list):
-                    if len(value) < 5:
-                        fdict['str'] = str(value)
-                    else:
-                        fdict['str'] = 'list'
-                elif hasattr(value,'mean'):
-                    if value.size < 5:
-                        fdict['str'] = str(value)
-                    else:
-                        fdict['str'] = '<{:.5}>'.format(value.mean())
-                else:
-                    try:
-                        fdict['str'] = '{:12.5g}'.format(value)
-                    except:
-                        fdict['str'] = str(value)
-
+                strval = _repr_value(value)
+                fdict = {'attr': attr, 'str': strval, 'unit': '', 'doc': ''}
+                fdict.update(**item)
+                
+#                if isinstance(value, str):
+#                    fdict['str'] = value
+#                elif isinstance(value, list):
+#                    if len(value) < 5:
+#                        fdict['str'] = str(value)
+#                    else:
+#                        fdict['str'] = 'list'
+#                elif hasattr(value,'mean'):
+#                    if value.size < 5:
+#                        fdict['str'] = str(value)
+#                    else:
+#                        fdict['str'] = '<{:.5}>'.format(value.mean())
+#                else:
+#                    try:
+#                        fdict['str'] = '{:12.5g}'.format(value)
+#                    except:
+#                        fdict['str'] = str(value)
+#
                 message('{attr:18s} {str:>12} {unit:7} {doc:}'.format(**fdict))
         else:
             message('No Event')
@@ -3640,9 +4017,16 @@ class ImageData(object):
         return message
 
     def __getattr__(self, attr):
+        """Only access psana.Detector data once.
+        """
         if attr in self._attrs:
-            return getattr(self._det, attr)(self._evt)
-        
+            if attr not in self._data:
+#                opts = self._opts.get(attr, {})
+#                self._data.update({attr: getattr(self._det, attr)(self._evt, **opts)})
+                self._data.update({attr: getattr(self._det, attr)(self._evt)})
+             
+            return self._data.get(attr)
+
     def __dir__(self):
         all_attrs =  set(self._attrs +
                          self.__dict__.keys() + dir(ImageData))
@@ -4075,11 +4459,16 @@ class EpicsStorePV(object):
             return None
 
     def __str__(self):
-        return '{:}'.format(self.value)
+        if len(self.data) > 1 and isinstance(self.data, np.ndarray):
+            value = '<{:}>'.format(mean(self.data))
+        else:
+            value = self.value
+
+        return '{:}'.format(value)
 
     def __repr__(self):
         return '< {:} = {:}, {:} -- {:} >'.format(self._pvname, \
-                self.value, self.stamp, \
+                str(self), self.stamp.time, \
                 self.__class__.__name__)
 
     def __getattr__(self, attr):
