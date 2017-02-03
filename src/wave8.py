@@ -11,7 +11,7 @@ class Wave8(PyDataSource.Detector):
 
         PyDataSource.Detector.__init__(self,*args,**kwargs)
 
-        if hasattr(self.configData, 'NChannels'):
+        if False and hasattr(self.configData, 'NChannels'):
             self.add.parameter(nchannels=self.configData.NChannels)
         else: 
             self.add.parameter(nchannels=8)
@@ -59,9 +59,9 @@ def waveforms(self):
     """
     wfs = []
     for ch in range(self.nchannels):
-        wf = self.data_u32[ch]
+        wf = self.evtData.data_u32[ch]
         if len(wf) == 0:
-            wf = self.data_u16[ch]
+            wf = self.evtData.data_u16[ch]
         back = wf[self.bkrange[0]:self.bkrange[1]].mean()
         wfs.append(-1.*wf+back)
 
