@@ -1,0 +1,187 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Data Access &#8212; PyDataSource 0.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="data-access">
+<span id="id1"></span><h1>Data Access<a class="headerlink" href="#data-access" title="Permalink to this headline">¶</a></h1>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [1]: </span><span class="kn">import</span> <span class="nn">PyDataSource</span>
+
+<span class="gp">In [2]: </span><span class="n">ds</span> <span class="o">=</span> <span class="n">PyDataSource</span><span class="o">.</span><span class="n">DataSource</span><span class="p">(</span><span class="n">exp</span><span class="o">=</span><span class="s1">&#39;xpptut15&#39;</span><span class="p">,</span><span class="n">run</span><span class="o">=</span><span class="mi">54</span><span class="p">)</span>
+
+<span class="gp">In [3]: </span><span class="n">ds</span><span class="o">.</span><span class="n">configData</span>
+<span class="gh">Out[3]: </span><span class="go">&lt; ConfigData: exp=mfx12616:run=45:smd &gt;</span>
+<span class="go">*Detectors in group 0 are &quot;BLD&quot; data recorded at 120 Hz on event code 40</span>
+<span class="go">*Detectors listed as Controls are controls devices with unknown event code (but likely 40).</span>
+<span class="go">Alias                     Group          Rate  Code  Pol. Delay [s]    Width [s]    Source</span>
+<span class="gt">------------------------------------------------------------------------------------------------------------------------</span>
+<span class="n">Acqiris</span>                       <span class="mi">1</span>                 <span class="mi">198</span>   <span class="n">Pos</span> <span class="mf">0.000147630</span>  <span class="mf">0.000010000</span>  <span class="n">DetInfo</span><span class="p">(</span><span class="n">MfxEndstation</span><span class="o">.</span><span class="mi">0</span><span class="p">:</span><span class="n">Acqiris</span><span class="o">.</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">BeamMonitor</span>                   <span class="mi">1</span>                 <span class="mi">198</span>                                 <span class="n">DetInfo</span><span class="p">(</span><span class="n">MfxEndstation</span><span class="o">.</span><span class="mi">0</span><span class="p">:</span><span class="n">Wave8</span><span class="o">.</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">EBeam</span>                         <span class="mi">1</span>                                                     <span class="n">BldInfo</span><span class="p">(</span><span class="n">EBeam</span><span class="p">)</span>
+<span class="n">FEEGasDetEnergy</span>               <span class="mi">1</span>                                                     <span class="n">BldInfo</span><span class="p">(</span><span class="n">FEEGasDetEnergy</span><span class="p">)</span>
+<span class="n">FEE_Spec</span>                      <span class="mi">1</span>                                                     <span class="n">BldInfo</span><span class="p">(</span><span class="n">FEE</span><span class="o">-</span><span class="n">SPEC0</span><span class="p">)</span>
+<span class="n">PhaseCavity</span>                   <span class="mi">1</span>                                                     <span class="n">BldInfo</span><span class="p">(</span><span class="n">PhaseCavity</span><span class="p">)</span>
+<span class="n">Rayonix</span>                       <span class="mi">1</span>                 <span class="mi">198</span>   <span class="n">Neg</span> <span class="mf">0.002998336</span>  <span class="mf">0.000500000</span>  <span class="n">DetInfo</span><span class="p">(</span><span class="n">MfxEndstation</span><span class="o">.</span><span class="mi">0</span><span class="p">:</span><span class="n">Rayonix</span><span class="o">.</span><span class="mi">0</span><span class="p">)</span>
+<span class="o">&lt;</span> <span class="n">ConfigData</span><span class="p">:</span> <span class="n">exp</span><span class="o">=</span><span class="n">mfx12616</span><span class="p">:</span><span class="n">run</span><span class="o">=</span><span class="mi">45</span><span class="p">:</span><span class="n">smd</span> <span class="o">&gt;</span>
+
+<span class="gp">In [4]: </span><span class="n">evt</span>  <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">events</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Press tab to see detectors in event (according to aliases defined in daq)</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [5]: </span><span class="n">evt</span><span class="o">.</span>
+<span class="go">         evt.cspad           evt.Evr             evt.keys            evt.PhaseCavity     evt.XppSb3_Ipm</span>
+<span class="go">         evt.EBeam           evt.FEEGasDetEnergy evt.L3T             evt.XppEnds_Ipm0    evt.yag2</span>
+<span class="go">         evt.EventId         evt.get             evt.next            evt.XppSb2_Ipm      evt.yag_lom</span>
+</pre></div>
+</div>
+<div class="section" id="calibrated-area-detector">
+<h2>Calibrated Area Detector<a class="headerlink" href="#calibrated-area-detector" title="Permalink to this headline">¶</a></h2>
+<dl class="docutils">
+<dt>For complex detectors such as the cspad, the detector object gives access to the raw, calibrated and reconstructed images.</dt>
+<dd><ul class="first last simple">
+<li>raw:    raw uncorrected data (3D array)</li>
+<li>calib:  calibrated &#8220;unassembled data&#8221; (3D array, pedestal and common mode corrected, no geometry applied)</li>
+<li>image:  &#8220;assembled images&#8221; (2D array, geometry applied).</li>
+</ul>
+</dd>
+</dl>
+<p>Tab on the evt.cspad object to see the attributes available and use the show_info method to print a summary table.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [36]: </span><span class="n">evt</span><span class="o">.</span><span class="n">cspad</span><span class="o">.</span>
+<span class="go">            evt.cspad.add        evt.cspad.epicsData  evt.cspad.L3T        evt.cspad.set_cmpars</span>
+<span class="go">            evt.cspad.calib      evt.cspad.EventId    evt.cspad.monitor    evt.cspad.shape</span>
+<span class="go">            evt.cspad.calibData  evt.cspad.Evr        evt.cspad.next       evt.cspad.show_all   &gt;</span>
+<span class="go">            evt.cspad.configData evt.cspad.evtData    evt.cspad.psplots    evt.cspad.show_info</span>
+<span class="go">            evt.cspad.detector   evt.cspad.image      evt.cspad.raw        evt.cspad.size</span>
+
+<span class="gp">In [35]: </span><span class="n">evt</span><span class="o">.</span><span class="n">cspad</span><span class="o">.</span><span class="n">show_info</span><span class="p">()</span>
+<span class="gh">Out[35]:</span>
+<span class="gt">--------------------------------------------------------------------------------</span>
+<span class="n">cspad</span> <span class="n">xpptut15</span><span class="p">,</span> <span class="n">Run</span> <span class="mi">54</span><span class="p">,</span> <span class="n">Step</span> <span class="mi">0</span><span class="p">,</span> <span class="n">Event</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">11</span><span class="p">:</span><span class="mi">37</span><span class="p">:</span><span class="mf">12.4517</span><span class="p">,</span> <span class="p">[</span><span class="mi">140</span><span class="p">,</span> <span class="mi">141</span><span class="p">,</span> <span class="mi">41</span><span class="p">,</span> <span class="mi">40</span><span class="p">]</span>
+<span class="gt">--------------------------------------------------------------------------------</span>
+<span class="n">calib</span>                 <span class="o">&lt;</span><span class="mf">0.01065</span><span class="o">&gt;</span> <span class="n">ADU</span>     <span class="n">Calibrated</span> <span class="n">data</span>
+<span class="n">image</span>                <span class="o">&lt;</span><span class="mf">0.008139</span><span class="o">&gt;</span> <span class="n">ADU</span>     <span class="n">Reconstruced</span> <span class="mi">2</span><span class="n">D</span> <span class="n">image</span> <span class="kn">from</span> <span class="nn">calibStore</span> <span class="nn">geometry</span>
+<span class="n">raw</span>                  <span class="o">&lt;</span><span class="mf">1.57e+03</span><span class="o">&gt;</span> <span class="n">ADU</span>     <span class="n">Raw</span> <span class="n">data</span>
+<span class="n">shape</span>              <span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">185</span><span class="p">,</span> <span class="mi">388</span><span class="p">)</span>         <span class="n">Shape</span> <span class="n">of</span> <span class="n">raw</span> <span class="n">data</span> <span class="n">array</span>
+<span class="n">size</span>                    <span class="mi">2296960</span>         <span class="n">Total</span> <span class="n">size</span> <span class="n">of</span> <span class="n">raw</span> <span class="n">data</span>
+</pre></div>
+</div>
+<p>See example below of plotting an image with the matplotlib plotting library</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">PyDataSource</span>
+
+<span class="n">ds</span> <span class="o">=</span> <span class="n">PyDataSource</span><span class="o">.</span><span class="n">DataSource</span><span class="p">(</span><span class="n">exp</span><span class="o">=</span><span class="s1">&#39;xpptut15&#39;</span><span class="p">,</span><span class="n">run</span><span class="o">=</span><span class="mi">54</span><span class="p">)</span>
+
+<span class="n">evt</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">events</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">evt</span><span class="o">.</span><span class="n">cspad</span><span class="o">.</span><span class="n">image</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=-</span><span class="mi">2</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>(<a class="reference external" href="./examples/data_access.py">Source code</a>, <a class="reference external" href="./examples/data_access.png">png</a>, <a class="reference external" href="./examples/data_access.hires.png">hires.png</a>, <a class="reference external" href="./examples/data_access.pdf">pdf</a>)</p>
+<div class="figure">
+<img alt="_images/data_access.png" src="_images/data_access.png" />
+</div>
+</div>
+<div class="section" id="evr">
+<h2>Evr<a class="headerlink" href="#evr" title="Permalink to this headline">¶</a></h2>
+<p>To see which event codes are in the event</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Data Access</a><ul>
+<li><a class="reference internal" href="#calibrated-area-detector">Calibrated Area Detector</a></li>
+<li><a class="reference internal" href="#evr">Evr</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/pydatasource.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, SLAC National Accelerator Laboratory.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="_sources/pydatasource.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,438 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Data Structures &mdash; PyDataSource 0.0.0 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="PyDataSource 0.0.0 documentation" href="index.html"/>
+        <link rel="next" title="PyDatSource API" href="api.html"/>
+        <link rel="prev" title="PyDataSource.AddOn.psplot" href="generated/PyDataSource.AddOn.psplot.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> PyDataSource
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="data_access.html">Data Access Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_processing.html">Data Processing</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Data Structures</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#generating-run-data-sets">Generating Run Data Sets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#using-xarray">Using xarray</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#using-pandas">Using pandas</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">PyDatSource API</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">PyDataSource</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Data Structures</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/xarray.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="data-structures">
+<span id="id1"></span><h1>Data Structures<a class="headerlink" href="#data-structures" title="Permalink to this headline">¶</a></h1>
+<p>While accessing data on the event level is typically necessary at some level, it is often more desirable to deal with time series data or statistical summaries of groups of events (e.g., statistical mean for each &#8216;step&#8217; in a scan).  To this end, we convert the native xtc binary LCLS data to hdf5 data structured to be compatible with the xarray package.</p>
+<p><a class="reference external" href="http://xarray.pydata.org">xarray</a> &#8220;is an open source project and Python package that aims to bring the labeled data power of <a class="reference external" href="http://pandas.pydata.org">pandas</a> to the physical sciences, by providing N-dimensional variants of the core pandas data structures.&#8221;  At its most basic level, xarray simply makes numpy ndarrays convenient to use by adding dimension names and coordinate indexes.  It does so by extending the power of <a class="reference external" href="http://pandas.pydata.org">pandas</a> to the multi-dimensional nature of scientific data like we have at LCLS event data consisting of:</p>
+<blockquote>
+<div><ul class="simple">
+<li>scalar data (e.g., Photon Energy, Pulse Energy, position)</li>
+<li>vector data (e.g., waveforms, spectra)</li>
+<li>2D arrays (e.g., camera images)</li>
+<li>multi-dim arrays (e.g., cspad detector data)</li>
+</ul>
+</div></blockquote>
+<p>These data sometimes share the same dimensions and all have the common additional dimension of time.  <a class="reference external" href="http://xarray.pydata.org">xarray</a> provides a powerful structure for working with this sort of data, including associated meta data (like units and descriptions of data as well as overall information about the data set).</p>
+<p>In this section we show how to reduce our xtc run data into an appropriate xarray Dataset, and then show some examples of how to operate on the data to make plots and tables.  Once getting started with these examples, you can start taking advantage of the excellent documentation for <a class="reference external" href="http://xarray.pydata.org">xarray</a> and <a class="reference external" href="http://pandas.pydata.org">pandas</a> as well as plotting packages like <a class="reference external" href="http://seaborn.pydata.org/">seaborn</a>, which has support for pandas.</p>
+<div class="section" id="generating-run-data-sets">
+<h2>Generating Run Data Sets<a class="headerlink" href="#generating-run-data-sets" title="Permalink to this headline">¶</a></h2>
+<p>We start with the basic data processing previously outlined for the cxi lysozyme crystallography data.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [1]: </span><span class="o">%</span><span class="k">pylab</span>
+
+<span class="gp">In [2]: </span><span class="kn">import</span> <span class="nn">PyDataSource</span>
+
+<span class="gp">In [3]: </span><span class="n">ds</span> <span class="o">=</span> <span class="n">PyDataSource</span><span class="o">.</span><span class="n">DataSource</span><span class="p">(</span><span class="n">exp</span><span class="o">=</span><span class="s1">&#39;cxitut13&#39;</span><span class="p">,</span><span class="n">run</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+
+<span class="gp">In [4]: </span><span class="n">evt</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">events</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+
+<span class="gp">In [5]: </span><span class="n">evt</span><span class="o">.</span><span class="n">DscCsPad</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">parameter</span><span class="p">(</span><span class="n">gain</span><span class="o">=</span><span class="mi">1</span><span class="o">/</span><span class="mf">23.</span><span class="p">)</span>
+
+<span class="gp">In [6]: </span><span class="n">bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="mi">20</span><span class="p">,</span><span class="mi">150</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">evt</span><span class="o">.</span><span class="n">DscCsPad</span><span class="o">.</span><span class="n">gain</span>
+
+<span class="gp">In [7]: </span><span class="n">evt</span><span class="o">.</span><span class="n">DscCsPad</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="s1">&#39;calib&#39;</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span> <span class="n">gain</span><span class="o">=</span><span class="n">evt</span><span class="o">.</span><span class="n">DscCsPad</span><span class="o">.</span><span class="n">gain</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;photon_hist&#39;</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">&#39;photons&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Gain corrected histogram&#39;</span><span class="p">)</span>
+
+<span class="gp">In [8]: </span><span class="n">evt</span><span class="o">.</span><span class="n">DscCsPad</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s1">&#39;calib&#39;</span><span class="p">,</span> <span class="n">limits</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">10000</span><span class="p">),</span> <span class="n">gain</span><span class="o">=</span><span class="n">evt</span><span class="o">.</span><span class="n">DscCsPad</span><span class="o">.</span><span class="n">gain</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;photon_count&#39;</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">&#39;photons&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Photon Count&#39;</span><span class="p">)</span>
+
+<span class="gp">In [9]: </span><span class="n">evt</span><span class="o">.</span><span class="n">DscCsPad</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">projection</span><span class="p">(</span><span class="s1">&#39;calib&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Now load the first 10 events into an xarray Dataset.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [10]: </span><span class="n">x</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">to_xarray</span><span class="p">(</span><span class="n">nevents</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">max_size</span><span class="o">=</span><span class="mf">1e9</span><span class="p">)</span>
+<span class="go">updating DetInfo(CxiDs1.0:Cspad.0) DscCsPad</span>
+<span class="go">updating BldInfo(FEEGasDetEnergy) FEEGasDetEnergy</span>
+<span class="go">updating BldInfo(PhaseCavity) PhaseCavity</span>
+<span class="go">updating BldInfo(EBeam) EBeam</span>
+<span class="go">Begin processing 10 events</span>
+<span class="go">DscCsPad image_yaxis ([&#39;sensor&#39;, &#39;row&#39;, &#39;column&#39;], array([-94958.59118017, -94848.67118017, -94738.75118017, ...,</span>
+<span class="go">        95862.52881983,  95972.44881983,  96082.36881983]))</span>
+<span class="go">xarray Dataset configured</span>
+<span class="go">merging DscCsPad</span>
+<span class="go">merging EBeam</span>
+<span class="go">merging FEEGasDetEnergy</span>
+<span class="go">merging PhaseCavity</span>
+
+<span class="gp">In [11]: </span><span class="n">x</span>
+<span class="gh">Out[11]:</span>
+<span class="go">&lt;xarray.Dataset&gt;</span>
+<span class="go">Dimensions:                     (DscCsPad_X: 1741, DscCsPad_Y: 1739, DscCsPad_column: 388, DscCsPad_photon_hist_xaxis: 169, DscCsPad_rcalib: 1112, DscCsPad_row: 185, DscCsPad_sensor: 32, time: 9)</span>
+<span class="go">Coordinates:</span>
+<span class="go">    DscCsPad_areas              (DscCsPad_sensor, DscCsPad_row, DscCsPad_column) float64 1.0 ...</span>
+<span class="go">    DscCsPad_coords_x           (DscCsPad_sensor, DscCsPad_row, DscCsPad_column) float64 -4.863e+04 ...</span>
+<span class="go">    DscCsPad_coords_y           (DscCsPad_sensor, DscCsPad_row, DscCsPad_column) float64 -3.122e+03 ...</span>
+<span class="go">    DscCsPad_coords_z           (DscCsPad_sensor, DscCsPad_row, DscCsPad_column) float64 1.579e+05 ...</span>
+<span class="go">    DscCsPad_gain               (DscCsPad_sensor, DscCsPad_row, DscCsPad_column) float32 1.0 ...</span>
+<span class="go">    DscCsPad_indexes_x          (DscCsPad_sensor, DscCsPad_row, DscCsPad_column) uint64 435 ...</span>
+<span class="go">    DscCsPad_indexes_y          (DscCsPad_sensor, DscCsPad_row, DscCsPad_column) uint64 835 ...</span>
+<span class="go">    DscCsPad_pedestals          (DscCsPad_sensor, DscCsPad_row, DscCsPad_column) float32 1021.99 ...</span>
+<span class="go">    XrayOff                     (time) bool False False False False False ...</span>
+<span class="go">    XrayOn                      (time) bool True True True True True True ...</span>
+<span class="go">    ec40                        (time) bool True True True True True True ...</span>
+<span class="go">    ec42                        (time) bool False False True False False ...</span>
+<span class="go">    fiducials                   (time) int32 24258 24261 24264 24267 24270 ...</span>
+<span class="go">    nsec                        (time) int32 242496559 250830589 259164948 ...</span>
+<span class="go">    run                         (time) int32 10 10 10 10 10 10 10 10 10</span>
+<span class="go">    sec                         (time) int32 1463398721 1463398721 ...</span>
+<span class="go">    step                        (time) int64 0 0 0 0 0 0 0 0 0</span>
+<span class="go">    ticks                       (time) int32 331316 331106 330630 329804 ...</span>
+<span class="go">  * DscCsPad_row                (DscCsPad_row) int64 0 1 2 3 4 5 6 7 8 9 10 ...</span>
+<span class="go">  * DscCsPad_rcalib             (DscCsPad_rcalib) float64 6.196e+03 ...</span>
+<span class="go">  * DscCsPad_photon_hist_xaxis  (DscCsPad_photon_hist_xaxis) float64 -0.8478 ...</span>
+<span class="go">  * DscCsPad_X                  (DscCsPad_X) float64 -9.639e+04 -9.628e+04 ...</span>
+<span class="go">  * DscCsPad_Y                  (DscCsPad_Y) float64 -9.496e+04 -9.485e+04 ...</span>
+<span class="go">  * time                        (time) datetime64[ns] 2016-05-16T11:38:41.242496512 ...</span>
+<span class="go">  * DscCsPad_column             (DscCsPad_column) int64 0 1 2 3 4 5 6 7 8 9 ...</span>
+<span class="go">  * DscCsPad_sensor             (DscCsPad_sensor) int64 0 1 2 3 4 5 6 7 8 9 ...</span>
+<span class="go">Data variables:</span>
+<span class="go">    DscCsPad_calib              (time, DscCsPad_sensor, DscCsPad_row, DscCsPad_column) float64 6.375 ...</span>
+<span class="go">    DscCsPad_calib_r            (time, DscCsPad_rcalib) float64 3.682 0.7893 ...</span>
+<span class="go">    DscCsPad_image              (time, DscCsPad_X, DscCsPad_Y) float64 0.0 ...</span>
+<span class="go">    DscCsPad_photon_count       (time) float64 1.573e+05 5.603e+05 3.773e+05 ...</span>
+<span class="go">    DscCsPad_photon_hist        (time, DscCsPad_photon_hist_xaxis) float64 0.0 ...</span>
+<span class="go">    EBeam_damageMask            (time) float64 0.0 0.0 0.0 1.536e+04 ...</span>
+<span class="go">    EBeam_ebeamCharge           (time) float64 0.248 0.2482 0.2496 0.2515 ...</span>
+<span class="go">    EBeam_ebeamDumpCharge       (time) float64 1.132e+09 1.126e+09 1.136e+09 ...</span>
+<span class="go">    EBeam_ebeamEnergyBC1        (time) float64 -0.0622 -0.07417 -0.08815 ...</span>
+<span class="go">    EBeam_ebeamEnergyBC2        (time) float64 0.1851 0.1546 0.2375 -0.06483 ...</span>
+<span class="go">    EBeam_ebeamL3Energy         (time) float64 1.346e+04 1.346e+04 1.347e+04 ...</span>
+<span class="go">    EBeam_ebeamLTU250           (time) float64 -0.01082 0.001563 0.01469 ...</span>
+<span class="go">    EBeam_ebeamLTU450           (time) float64 0.09316 0.08028 0.06868 ...</span>
+<span class="go">    EBeam_ebeamLTUAngX          (time) float64 0.1495 0.1621 0.1507 0.1596 ...</span>
+<span class="go">    EBeam_ebeamLTUAngY          (time) float64 -0.02271 -0.02662 -0.02377 ...</span>
+<span class="go">    EBeam_ebeamLTUPosX          (time) float64 0.03425 0.03952 0.01846 ...</span>
+<span class="go">    EBeam_ebeamLTUPosY          (time) float64 0.001111 -0.003765 -0.001808 ...</span>
+<span class="go">    EBeam_ebeamPhotonEnergy     (time) float64 8.192e+03 8.194e+03 8.195e+03 ...</span>
+<span class="go">    EBeam_ebeamPkCurrBC1        (time) float64 210.3 216.9 210.8 213.1 212.5 ...</span>
+<span class="go">    EBeam_ebeamPkCurrBC2        (time) float64 2.972e+03 2.595e+03 2.874e+03 ...</span>
+<span class="go">    EBeam_ebeamUndAngX          (time) float64 -1.617e-05 0.0008718 ...</span>
+<span class="go">    EBeam_ebeamUndAngY          (time) float64 0.0004917 0.000752 0.0005472 ...</span>
+<span class="go">    EBeam_ebeamUndPosX          (time) float64 -0.008966 0.000391 0.01418 ...</span>
+<span class="go">    EBeam_ebeamUndPosY          (time) float64 -0.006598 -0.005061 -0.006382 ...</span>
+<span class="go">    EBeam_ebeamXTCAVAmpl        (time) float64 29.98 30.03 30.04 30.04 29.95 ...</span>
+<span class="go">    EBeam_ebeamXTCAVPhase       (time) float64 115.8 115.6 115.1 116.0 115.6 ...</span>
+<span class="go">    FEEGasDetEnergy_f_11_ENRC   (time) float64 2.847 2.831 2.72 2.973 2.656 ...</span>
+<span class="go">    FEEGasDetEnergy_f_12_ENRC   (time) float64 2.901 2.885 2.761 3.026 2.684 ...</span>
+<span class="go">    FEEGasDetEnergy_f_21_ENRC   (time) float64 2.8 2.806 2.85 2.969 2.684 ...</span>
+<span class="go">    FEEGasDetEnergy_f_22_ENRC   (time) float64 2.894 2.915 2.929 3.057 2.716 ...</span>
+<span class="go">    FEEGasDetEnergy_f_63_ENRC   (time) float64 2.726 2.658 2.748 2.869 2.593 ...</span>
+<span class="go">    FEEGasDetEnergy_f_64_ENRC   (time) float64 1.485 1.477 1.495 1.516 1.453 ...</span>
+<span class="go">    PhaseCavity_charge1         (time) float64 183.3 182.2 183.8 184.6 185.3 ...</span>
+<span class="go">    PhaseCavity_charge2         (time) float64 197.2 196.0 197.8 198.7 199.4 ...</span>
+<span class="go">    PhaseCavity_fitTime1        (time) float64 0.7133 0.6639 0.8109 0.699 ...</span>
+<span class="go">    PhaseCavity_fitTime2        (time) float64 -0.0525 -0.1251 0.005025 ...</span>
+<span class="go">Attributes:</span>
+<span class="go">    data_source: exp=cxitut13:run=10:smd</span>
+<span class="go">    run: 10</span>
+<span class="go">    instrument: CXI</span>
+<span class="go">    experiment: cxitut13</span>
+<span class="go">    expNum: 304</span>
+<span class="go">    calibDir: /reg/d/psdm/CXI/cxitut13/calib</span>
+<span class="go">    event_flags: [&#39;XrayOn&#39;, &#39;XrayOff&#39;]</span>
+<span class="go">    nsteps: 1</span>
+<span class="go">    scan_variables: []</span>
+<span class="go">    correlation_variables: []</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="using-xarray">
+<h2>Using xarray<a class="headerlink" href="#using-xarray" title="Permalink to this headline">¶</a></h2>
+<p>Now use the data processing and plotting methods built into xarray to plot the mean of the assembled CSpad images.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [12]: </span><span class="n">x</span><span class="o">.</span><span class="n">DscCsPad_image</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="s1">&#39;time&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">vmax</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+<span class="gh">Out[12]: </span><span class="go">&lt;matplotlib.collections.QuadMesh at 0x7f8e801a1090&gt;</span>
+</pre></div>
+</div>
+<div class="figure align-center">
+<img alt="_images/cxitut13_run10_x_DscCsPad_image_mean.jpg" src="_images/cxitut13_run10_x_DscCsPad_image_mean.jpg" />
+</div>
+<p>Note that if instead of using the ipython magic method %pylab or start ipython with &#8211;pylab you prefer you will need to execute plt.show() after making plots (first &#8220;import matplotlib.pyplot as plt&#8221;).</p>
+<p>Now plot the mean of the CSpad photon histogram.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [13]: </span><span class="n">x</span><span class="o">.</span><span class="n">DscCsPad_photon_hist</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="s1">&#39;time&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+<span class="gh">Out[13]: </span><span class="go">[&lt;matplotlib.lines.Line2D at 0x7f8e5b9982d0&gt;]</span>
+</pre></div>
+</div>
+<div class="figure align-center">
+<img alt="_images/cxitut13_run10_x_DscCsPad_photon_hist_mean.jpg" src="_images/cxitut13_run10_x_DscCsPad_photon_hist_mean.jpg" />
+</div>
+<p>The convenient feature of using the plot method in xarray is that it handles the axes labels automatically.  You can still customize then as desired using the normal matplotlib commands.</p>
+</div>
+<div class="section" id="using-pandas">
+<h2>Using pandas<a class="headerlink" href="#using-pandas" title="Permalink to this headline">¶</a></h2>
+<p>It is often more convenient to use the features of Pandas DataFrame objects.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [14]: </span><span class="n">attrs</span> <span class="o">=</span> <span class="p">[</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">x</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;FEEGasDetEnergy&#39;</span><span class="p">)]</span>
+
+<span class="gp">In [15]: </span><span class="n">df</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">reset_coords</span><span class="p">()[</span><span class="n">attrs</span><span class="p">]</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">()</span>
+
+<span class="gp">In [16]: </span><span class="n">df</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+<span class="gh">Out[16]: </span><span class="go">&lt;matplotlib.axes._subplots.AxesSubplot at 0x7f8e5b65b0d0&gt;</span>
+</pre></div>
+</div>
+<div class="figure align-center">
+<img alt="_images/cxitut13_run10_df_FEEGasDetEnergy_plot.jpg" src="_images/cxitut13_run10_df_FEEGasDetEnergy_plot.jpg" />
+</div>
+<p>There are many plot options built into pandas with excellent documentation.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [17]: </span><span class="n">ax</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">subplots</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">sharex</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">layout</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">12</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="figure align-center">
+<img alt="_images/cxitut13_run10_df_FEEGasDetEnergy_subplots.jpg" src="_images/cxitut13_run10_df_FEEGasDetEnergy_subplots.jpg" />
+</div>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [18]: </span><span class="n">ax</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">sharex</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">layout</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">12</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="figure align-center">
+<img alt="_images/cxitut13_run10_df_FEEGasDetEnergy_hist.jpg" src="_images/cxitut13_run10_df_FEEGasDetEnergy_hist.jpg" />
+</div>
+<p>pandas also offers powerful and convenient statistical methods.  For example, the describe method can be used to easily generate statistics of a group of data.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [19]: </span><span class="n">df</span><span class="o">.</span><span class="n">describe</span><span class="p">(</span><span class="n">percentiles</span><span class="o">=</span><span class="p">[</span><span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.95</span><span class="p">])</span><span class="o">.</span><span class="n">T</span>
+<span class="gh">Out[19]:</span>
+<span class="go">                           count      mean       std       min        5%  \</span>
+<span class="go">FEEGasDetEnergy_f_11_ENRC    9.0  2.813320  0.144863  2.605316  2.625602</span>
+<span class="go">FEEGasDetEnergy_f_12_ENRC    9.0  2.855328  0.140328  2.660309  2.669918</span>
+<span class="go">FEEGasDetEnergy_f_21_ENRC    9.0  2.809931  0.159245  2.522179  2.586977</span>
+<span class="go">FEEGasDetEnergy_f_22_ENRC    9.0  2.899421  0.160385  2.678214  2.693444</span>
+<span class="go">FEEGasDetEnergy_f_63_ENRC    9.0  2.710884  0.156701  2.460547  2.513376</span>
+<span class="go">FEEGasDetEnergy_f_64_ENRC    9.0  1.480598  0.032038  1.417950  1.431912</span>
+
+<span class="go">                                50%       95%       max</span>
+<span class="go">FEEGasDetEnergy_f_11_ENRC  2.831051  3.012945  3.039820</span>
+<span class="go">FEEGasDetEnergy_f_12_ENRC  2.884738  3.044894  3.057413</span>
+<span class="go">FEEGasDetEnergy_f_21_ENRC  2.799524  3.039124  3.085850</span>
+<span class="go">FEEGasDetEnergy_f_22_ENRC  2.893753  3.144830  3.203379</span>
+<span class="go">FEEGasDetEnergy_f_63_ENRC  2.704375  2.948991  3.002475</span>
+<span class="go">FEEGasDetEnergy_f_64_ENRC  1.479463  1.521697  1.525561</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="api.html" class="btn btn-neutral float-right" title="PyDatSource API" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="generated/PyDataSource.AddOn.psplot.html" class="btn btn-neutral" title="PyDataSource.AddOn.psplot" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, SLAC National Accelerator Laboratory.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.0.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

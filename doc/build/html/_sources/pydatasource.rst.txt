@@ -1,0 +1,82 @@
+.. _data_access:
+
+Data Access
+***********
+
+.. sourcecode:: ipython
+
+    In [1]: import PyDataSource
+
+    In [2]: ds = PyDataSource.DataSource(exp='xpptut15',run=54)
+
+    In [3]: ds.configData
+    Out[3]: < ConfigData: exp=mfx12616:run=45:smd >
+    *Detectors in group 0 are "BLD" data recorded at 120 Hz on event code 40
+    *Detectors listed as Controls are controls devices with unknown event code (but likely 40).
+    Alias                     Group          Rate  Code  Pol. Delay [s]    Width [s]    Source                    
+    ------------------------------------------------------------------------------------------------------------------------
+    Acqiris                       1                 198   Pos 0.000147630  0.000010000  DetInfo(MfxEndstation.0:Acqiris.0)      
+    BeamMonitor                   1                 198                                 DetInfo(MfxEndstation.0:Wave8.0)        
+    EBeam                         1                                                     BldInfo(EBeam)                          
+    FEEGasDetEnergy               1                                                     BldInfo(FEEGasDetEnergy)                
+    FEE_Spec                      1                                                     BldInfo(FEE-SPEC0)                      
+    PhaseCavity                   1                                                     BldInfo(PhaseCavity)                    
+    Rayonix                       1                 198   Neg 0.002998336  0.000500000  DetInfo(MfxEndstation.0:Rayonix.0)      
+    < ConfigData: exp=mfx12616:run=45:smd >
+
+    In [4]: evt  = ds.events.next()
+
+Press tab to see detectors in event (according to aliases defined in daq)
+
+.. sourcecode:: ipython
+  
+    In [5]: evt.
+             evt.cspad           evt.Evr             evt.keys            evt.PhaseCavity     evt.XppSb3_Ipm      
+             evt.EBeam           evt.FEEGasDetEnergy evt.L3T             evt.XppEnds_Ipm0    evt.yag2            
+             evt.EventId         evt.get             evt.next            evt.XppSb2_Ipm      evt.yag_lom         
+
+Calibrated Area Detector
+------------------------
+
+For complex detectors such as the cspad, the detector object gives access to the raw, calibrated and reconstructed images.
+ - raw:    raw uncorrected data (3D array)
+ - calib:  calibrated "unassembled data" (3D array, pedestal and common mode corrected, no geometry applied) 
+ - image:  "assembled images" (2D array, geometry applied).
+
+Tab on the evt.cspad object to see the attributes available and use the show_info method to print a summary table.  
+
+.. sourcecode:: ipython
+
+    In [36]: evt.cspad.
+                evt.cspad.add        evt.cspad.epicsData  evt.cspad.L3T        evt.cspad.set_cmpars  
+                evt.cspad.calib      evt.cspad.EventId    evt.cspad.monitor    evt.cspad.shape       
+                evt.cspad.calibData  evt.cspad.Evr        evt.cspad.next       evt.cspad.show_all   >
+                evt.cspad.configData evt.cspad.evtData    evt.cspad.psplots    evt.cspad.show_info   
+                evt.cspad.detector   evt.cspad.image      evt.cspad.raw        evt.cspad.size        
+
+    In [35]: evt.cspad.show_info()
+    Out[35]: 
+    --------------------------------------------------------------------------------
+    cspad xpptut15, Run 54, Step 0, Event 0, 11:37:12.4517, [140, 141, 41, 40]
+    --------------------------------------------------------------------------------
+    calib                 <0.01065> ADU     Calibrated data
+    image                <0.008139> ADU     Reconstruced 2D image from calibStore geometry
+    raw                  <1.57e+03> ADU     Raw data
+    shape              (32, 185, 388)         Shape of raw data array
+    size                    2296960         Total size of raw data
+
+See example below of plotting an image with the matplotlib plotting library
+
+.. plot:: examples/data_access.py
+   :include-source:
+
+
+
+
+Evr
+---
+
+To see which event codes are in the event
+
+
+
